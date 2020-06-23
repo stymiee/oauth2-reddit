@@ -4,9 +4,10 @@ namespace Rudolf\OAuth2\Client\Tests\Provider;
 
 use InvalidArgumentException;
 use League\OAuth2\Client\Token\AccessToken;
+use PHPUnit\Framework\TestCase;
 use Rudolf\OAuth2\Client\Provider\Reddit;
 
-class RedditTest extends \PHPUnit_Framework_TestCase
+class RedditTest extends TestCase
 {
 
     private function getBaseCredentials()
@@ -77,27 +78,27 @@ class RedditTest extends \PHPUnit_Framework_TestCase
         $provider = $this->createProvider($credentials);
 
         $url = $provider->getAuthorizationUrl($options);
-        extract(parse_url($url));
+        $urlParts = parse_url($url);
 
-        $this->assertEquals('https', $scheme);
-        $this->assertEquals('ssl.reddit.com', $host);
-        $this->assertEquals('/api/v1/authorize', $path);
+        $this->assertEquals('https', $urlParts['scheme']);
+        $this->assertEquals('ssl.reddit.com', $urlParts['host']);
+        $this->assertEquals('/api/v1/authorize', $urlParts['path']);
 
-        parse_str($query);
+        parse_str($urlParts['query'], $queryStringParts);
 
-        $this->assertEquals($client_id,         $credentials['clientId']);
-        $this->assertEquals($redirect_uri,      $credentials['redirectUri']);
-        $this->assertEquals($response_type,     'code');
-        $this->assertEquals($approval_prompt,   'auto');
-        $this->assertEquals($scope,             'identity,read');
+        $this->assertEquals($credentials['clientId'], $queryStringParts['client_id']);
+        $this->assertEquals($credentials['redirectUri'], $queryStringParts['redirect_uri']);
+        $this->assertEquals('code', $queryStringParts['response_type']);
+        $this->assertEquals('auto', $queryStringParts['approval_prompt']);
+        $this->assertEquals('identity,read', $queryStringParts['scope']);
 
         if (isset($options['duration'])) {
-            $this->assertEquals($duration, $options['duration']);
+            $this->assertEquals($queryStringParts['duration'], $options['duration']);
         } else {
-            $this->assertFalse(isset($duration));
+            $this->assertFalse(isset($queryStringParts['duration']));
         }
 
-        $this->assertRegExp('~[a-zA-Z0-9]{32}~', $state);
+        $this->assertRegExp('~[a-zA-Z0-9]{32}~', $queryStringParts['state']);
     }
 
     public function testGetHeaders()
@@ -115,11 +116,9 @@ class RedditTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $provider->getHeaders());
     }
 
-    /**
-     * @expectedException InvalidArgumentException
-     */
     public function testGetHeadersInvalidUserAgent()
     {
+        $this->expectException(InvalidArgumentException::class);
         $credentials = $this->getCredentials();
         $credentials['userAgent'] = 'invalid';
 
@@ -137,7 +136,7 @@ class RedditTest extends \PHPUnit_Framework_TestCase
 
         $provider = $this->createProvider($credentials);
 
-        $this->assertFalse(!! $provider->userAgent);
+        $this->assertNotFalse(!$provider->userAgent);
         $provider->getHeaders();
     }
 
@@ -217,9 +216,9 @@ class RedditTest extends \PHPUnit_Framework_TestCase
      */
     public function testDeviceId($options = [])
     {
-        $this->setExpectedException(InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $credentials = $this->getCredentials('installed_client');
         $provider = $this->createProvider($credentials);
-        $token = $provider->getAccessToken('installed_client', $options);
+        $provider->getAccessToken('installed_client', $options);
     }
 }
